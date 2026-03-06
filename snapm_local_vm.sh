@@ -114,7 +114,7 @@ scp -o StrictHostKeyChecking=no -o BatchMode=yes -i "$SSH_KEY" \
 
 # Execute test setup and run tests
 echo "Setting up test environment and running tests..."
-ssh -o StrictHostKeyChecking=no -o BatchMode=yes -i "$SSH_KEY" "${VM_USER}@${VM_IP}" << 'EOF'
+ssh -t -o StrictHostKeyChecking=no -o BatchMode=yes -i "$SSH_KEY" "${VM_USER}@${VM_IP}" << 'EOF'
 set -e  # Exit on error
 set -x  # Show commands being executed
 
@@ -152,7 +152,7 @@ systemctl daemon-reload
 . scripts/setpaths.sh
 
 # Run pytest
-pytest -v --log-level=debug tests/
+pytest -v --log-level=debug --color=yes tests/
 EOF
 
 echo "=== Provisioning Complete ==="
