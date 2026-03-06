@@ -1,25 +1,32 @@
 #!/bin/bash
 set -e  # Exit on any error
 
-BASE_DIR="${HOME}/VirtualMachines"
+# Configuration
+TESTBASE="${TESTBASE:-$(pwd)}"  # Default to current directory if not set
+IMAGES_DIR="${TESTBASE}/images"
+AUTO_DIR="${TESTBASE}/auto"
+FEDORA_IMAGE_NAME="Fedora-Cloud-Base-Generic-43-1.6.x86_64.qcow2"
 
 # Configuration variables
 VM_NAME="fedora-vm-$(date +%s)"
 VM_MEMORY=2048  # MB
 VM_CPUS=2
 VM_DISK_SIZE=20  # GB
-BASE_IMAGE="${BASE_DIR}/images/Fedora-Cloud-Base-Generic-43-1.6.x86_64.qcow2"
-VM_DISK="${BASE_DIR}/auto/${VM_NAME}.qcow2"
+BASE_IMAGE="${IMAGES_DIR}/${FEDORA_IMAGE_NAME}"
+VM_DISK="${AUTO_DIR}/${VM_NAME}.qcow2"
 SSH_KEY="${HOME}/.ssh/id_ed25519"
 TAR_FILE="./payload.tar.gz"  # Compressed tar file to upload
 VM_USER="root"
 VM_IP=""
 
 echo "=== Fedora VM Provisioning Script ==="
+echo "TESTBASE: $TESTBASE"
+echo "Images directory: $IMAGES_DIR"
+echo "VMs directory: $AUTO_DIR"
 
 # Create directories
-mkdir -p "${BASE_DIR}/images"
-mkdir -p "${BASE_DIR}/auto"
+mkdir -p "$IMAGES_DIR"
+mkdir -p "$AUTO_DIR"
 
 # Check prerequisites
 if [ ! -f "$BASE_IMAGE" ]; then
@@ -58,7 +65,7 @@ virt-install \
 echo "VM created and starting..."
 
 # Create cleanup script
-CLEANUP_SCRIPT="./cleanup_${VM_NAME}.sh"
+CLEANUP_SCRIPT="${TESTBASE}/cleanup_${VM_NAME}.sh"
 cat > "$CLEANUP_SCRIPT" << 'CLEANUP_EOF'
 #!/bin/bash
 # Cleanup script for VM: $VM_NAME
@@ -162,5 +169,5 @@ echo "SSH Command: ssh -i $SSH_KEY ${VM_USER}@${VM_IP}"
 
 echo ""
 echo "To destroy this VM later, run:"
-echo " ./$CLEANUP_SCRIPT or run "
-echo "  virsh destroy $VM_NAME && virsh undefine $VM_NAME --remove-all-storage"
+echo " $CLEANUP_SCRIPT"
+echo "  or manually: virsh destroy $VM_NAME && virsh undefine $VM_NAME --remove-all-storage"

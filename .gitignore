@@ -1,0 +1,12 @@
+# Downloaded images
+images/*.qcow2
+images/*.tmp
+
+# Auto-generated VMs
+auto/
+
+# Payload tarballs
+payload.tar.gz
+
+# Cleanup scripts
+cleanup_*.sh
