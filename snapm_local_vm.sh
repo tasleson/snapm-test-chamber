@@ -11,7 +11,7 @@ VM_DISK_SIZE=20  # GB
 BASE_IMAGE="${BASE_DIR}/images/Fedora-Cloud-Base-Generic-43-1.6.x86_64.qcow2"
 VM_DISK="${BASE_DIR}/auto/${VM_NAME}.qcow2"
 SSH_KEY="${HOME}/.ssh/id_ed25519"
-REMOTE_SCRIPT="./smoke.sh"
+TAR_FILE="./payload.tar.gz"  # Compressed tar file to upload
 VM_USER="root"
 VM_IP=""
 
@@ -27,8 +27,8 @@ if [ ! -f "$BASE_IMAGE" ]; then
     exit 1
 fi
 
-if [ ! -f "$REMOTE_SCRIPT" ]; then
-    echo "Error: Remote script not found at $REMOTE_SCRIPT"
+if [ ! -f "$TAR_FILE" ]; then
+    echo "Error: Tar file not found at $TAR_FILE"
     exit 1
 fi
 
@@ -93,15 +93,53 @@ if [ "$SSH_READY" = false ]; then
     exit 1
 fi
 
-# Copy script to VM
-echo "Copying script to VM..."
+# Copy tar file to VM
+echo "Uploading tar file to VM..."
 scp -o StrictHostKeyChecking=no -o BatchMode=yes -i "$SSH_KEY" \
-    "$REMOTE_SCRIPT" "${VM_USER}@${VM_IP}:/tmp/script-to-run.sh"
+    "$TAR_FILE" "${VM_USER}@${VM_IP}:/root/payload.tar.gz"
 
-# Make script executable and run it
-echo "Executing script on VM..."
-ssh -o StrictHostKeyChecking=no -o BatchMode=yes -i "$SSH_KEY" "${VM_USER}@${VM_IP}" \
-    "chmod +x /tmp/script-to-run.sh && /tmp/script-to-run.sh"
+# Execute test setup and run tests
+echo "Setting up test environment and running tests..."
+ssh -o StrictHostKeyChecking=no -o BatchMode=yes -i "$SSH_KEY" "${VM_USER}@${VM_IP}" << 'EOF'
+set -e  # Exit on error
+set -x  # Show commands being executed
+
+# Create test directory and change to it
+mkdir -p /root/test
+cd /root/test
+
+# Install git
+dnf install -y git
+
+# Clone boom-boot repository
+git clone https://github.com/snapshotmanager/boom-boot
+
+# Extract payload and capture the created directory
+tar -xzf /root/payload.tar.gz
+TESTING=$(tar -tzf /root/payload.tar.gz | head -1 | cut -f1 -d"/")
+
+# Install build dependencies for snapm
+dnf -y builddep snapm
+
+# Enable and start stratisd
+systemctl enable --now stratisd
+
+# Change to testing directory
+cd "$TESTING"
+
+# Install configuration files and systemd units
+cp -r etc/snapm /etc
+cp systemd/*.timer systemd/*.service /usr/lib/systemd/system
+cp systemd/tmpfiles.d/snapm.conf /usr/lib/tmpfiles.d
+systemd-tmpfiles --create /usr/lib/tmpfiles.d/snapm.conf
+systemctl daemon-reload
+
+# Source environment setup script
+. scripts/setpaths.sh
+
+# Run pytest
+pytest -v --log-level=debug tests/
+EOF
 
 echo "=== Provisioning Complete ==="
 echo "VM Name: $VM_NAME"
