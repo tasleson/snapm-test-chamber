@@ -81,6 +81,20 @@ check_preconditions() {
     fi
     log_info "✓ Libvirt daemon is running"
 
+    # Check if default network exists and is active
+    if ! virsh net-list --all 2>/dev/null | grep -q "default"; then
+        log_error "Libvirt 'default' network does not exist"
+        log_error "Create it with: virsh net-define /usr/share/libvirt/networks/default.xml && virsh net-start default && virsh net-autostart default"
+        exit 1
+    fi
+
+    if ! virsh net-list 2>/dev/null | grep -q "default.*active"; then
+        log_error "Libvirt 'default' network is not active"
+        log_error "Start it with: virsh net-start default && virsh net-autostart default"
+        exit 1
+    fi
+    log_info "✓ Libvirt 'default' network is active"
+
     # Validate we have write access to TESTBASE
     if [ ! -w "$TESTBASE" ]; then
         log_error "No write permission for TESTBASE directory: $TESTBASE"

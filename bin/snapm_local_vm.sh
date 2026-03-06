@@ -64,7 +64,7 @@ virt-install \
 
 echo "VM created and starting..."
 
-# Create cleanup script
+# Create cleanup script immediately so user can clean up if something fails
 CLEANUP_SCRIPT="${TESTBASE}/cleanup_${VM_NAME}.sh"
 cat > "$CLEANUP_SCRIPT" << 'CLEANUP_EOF'
 #!/bin/bash
