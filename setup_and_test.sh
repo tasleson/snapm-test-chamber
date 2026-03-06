@@ -31,6 +31,67 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Precondition checks
+check_preconditions() {
+    log_info "Performing precondition checks..."
+
+    # Check for required executables
+    local REQUIRED_COMMANDS=(
+        "curl"
+        "tar"
+        "virt-customize"
+        "qemu-img"
+        "virt-install"
+        "virsh"
+        "ssh"
+        "scp"
+    )
+
+    local MISSING_COMMANDS=()
+    for cmd in "${REQUIRED_COMMANDS[@]}"; do
+        if ! command -v "$cmd" &> /dev/null; then
+            MISSING_COMMANDS+=("$cmd")
+        fi
+    done
+
+    if [ ${#MISSING_COMMANDS[@]} -ne 0 ]; then
+        log_error "Missing required executables:"
+        for cmd in "${MISSING_COMMANDS[@]}"; do
+            echo "  - $cmd"
+        done
+        exit 1
+    fi
+    log_info "✓ All required executables found"
+
+    # Check for SSH key
+    local SSH_PUBLIC_KEY="${HOME}/.ssh/id_ed25519.pub"
+
+    if [ ! -f "$SSH_PUBLIC_KEY" ]; then
+        log_error "SSH public key not found: $SSH_PUBLIC_KEY"
+        log_error "Generate one with: ssh-keygen -t ed25519 -f ${SSH_PRIVATE_KEY}"
+        exit 1
+    fi
+    log_info "✓ SSH key pair found"
+
+    # Check if libvirt is running
+    if ! virsh --connect qemu:///system list &> /dev/null; then
+        log_error "Cannot connect to libvirt daemon"
+        log_error "Ensure libvirt is installed and running: sudo systemctl start libvirtd"
+        exit 1
+    fi
+    log_info "✓ Libvirt daemon is running"
+
+    # Validate we have write access to TESTBASE
+    if [ ! -w "$TESTBASE" ]; then
+        log_error "No write permission for TESTBASE directory: $TESTBASE"
+        exit 1
+    fi
+    log_info "✓ Write access to TESTBASE confirmed"
+
+    log_info "All precondition checks passed!"
+    echo ""
+}
+
 # Usage information
 usage() {
     cat << EOF
@@ -65,6 +126,10 @@ if [ ! -d "$SNAPM_SOURCE" ]; then
 fi
 
 log_info "=== Snapshot Manager VM Test Automation ==="
+
+# Run precondition checks before doing any work
+check_preconditions
+
 log_info "TESTBASE: $TESTBASE"
 log_info "Images directory: $IMAGES_DIR"
 log_info "VMs directory: $AUTO_DIR"
