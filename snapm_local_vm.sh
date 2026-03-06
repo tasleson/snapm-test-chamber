@@ -57,6 +57,20 @@ virt-install \
 
 echo "VM created and starting..."
 
+# Create cleanup script
+CLEANUP_SCRIPT="./cleanup_${VM_NAME}.sh"
+cat > "$CLEANUP_SCRIPT" << 'CLEANUP_EOF'
+#!/bin/bash
+# Cleanup script for VM: $VM_NAME
+SCRIPT_PATH="$(readlink -f "$0")"
+virsh destroy $VM_NAME && virsh undefine $VM_NAME --remove-all-storage
+rm -f "$SCRIPT_PATH"
+CLEANUP_EOF
+# Replace VM_NAME placeholder in the script
+sed -i "s/\$VM_NAME/$VM_NAME/g" "$CLEANUP_SCRIPT"
+chmod +x "$CLEANUP_SCRIPT"
+echo "Cleanup script created: $CLEANUP_SCRIPT"
+
 # Wait for VM to boot and get IP
 echo "Waiting for VM to get an IP address..."
 IP_FOUND=false
@@ -148,4 +162,5 @@ echo "SSH Command: ssh -i $SSH_KEY ${VM_USER}@${VM_IP}"
 
 echo ""
 echo "To destroy this VM later, run:"
+echo " ./$CLEANUP_SCRIPT or run "
 echo "  virsh destroy $VM_NAME && virsh undefine $VM_NAME --remove-all-storage"
