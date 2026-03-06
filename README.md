@@ -1,4 +1,4 @@
-# snapm-test-chamber
+#<img width="800" height="600" alt="snapm-test-chamber" src="https://github.com/user-attachments/assets/2de8499b-67aa-43ef-bb5a-70c1671beaf3" />
 
 Automated testing framework for [snapm](https://github.com/snapshotmanager/snapm) using disposable Fedora VMs. Handles image download, VM provisioning, dependency installation, and pytest execution in clean isolated environments.
 
